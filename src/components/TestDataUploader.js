@@ -1,31 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../constants/firebaseConfig';
 import { GAS_URL, ACTION, CSV_HEADER, createFrozenMap } from '../constants/config';
 import { useTestContext } from './TestContext';
 import { Spin, Alert, Button } from 'antd';
+import { SECTION } from '../constants/questions';
 
 // A map to control the format of meta data labels
 const metaDataLabel = Object.freeze({
-    pid: 'PID',
+    pid: 'Pid',
     firstName: 'First_Name',
     lastName: 'Last_Name',
     email: 'Email',
-    startTime: 'Start_Time',
     theme: 'Theme',
-    answer1: 'Answer_1',
-    answer2: 'Answer_2',
-    score1: 'Score_1',
-    score2: 'Score_2',
-    recordCount: 'Record_Count',
-    strategy: 'Strategy',
-    gender: 'Gender',
-    raceSeq: 'Races',
-    raceOther: 'Other_Race',
-    birthYear: 'Birth_Year',
-    major: 'Major',
-    games: 'Games',
-    handedness: 'Handedness',
+    testOrder: 'Test_Group',
+    testType: 'Test_Type',
+    partLabel: 'Part_Label',
+
+    answer: 'Answer',
+    totalTime: 'Total_Time',
+
+    answerInTime: 'Answer_InTime',
+    scoreInTime: 'Score_InTime',
+    answerOverTime: 'Answer_OverTime',
+    scoreOverTime: 'Score_OverTime',
+    
 });
 
 // Uploading status
@@ -35,21 +32,16 @@ const UPLOAD_STATUS = createFrozenMap([
 
 
 function TestDataUploader() {
-    const { metaData, csvDataBuf } = useTestContext();
+    const { metaData, csvDataBuf, timeStamps } = useTestContext();
     const fileName = useRef('??.csv');
     const csvContent = useRef(null);
     const [requestSent, setRequestSent] = useState(false);
     const [status, setStatus] = useState(UPLOAD_STATUS.uploading);
-    const docRef = useRef(null);
 
-    useEffect(() => {
-        if (metaData.current.email && !docRef.current) {
-            docRef.current = doc(db, 'participants', metaData.current.email);
-        }
-    });
     
     const generateFileName = (isDownloaded = false) => {
-        //const id = metaData.current.pid;
+        const id = metaData.current.pid;
+        const type = metaData.current.testType;
         const F = metaData.current.firstName.charAt(0).toUpperCase();
         const L = metaData.current.lastName.charAt(0).toUpperCase();
         const now = new Date();
@@ -58,18 +50,55 @@ function TestDataUploader() {
         const hour   = String(now.getHours()).padStart(2, '0');
         const minute = String(now.getMinutes()).padStart(2, '0');
         const suffix = isDownloaded ? '_DL.csv' : '.csv';
-        //return `${id}_${F}${L}_${month}${day}_${hour}${minute}${suffix}`;
+        return `${id}_${type}_${F}${L}_${month}${day}_${hour}${minute}${suffix}`;
 
         // A self registered one, ignore pid
-        return `${F}${L}_${month}${day}_${hour}${minute}${suffix}`;
+        //return `${F}${L}_${month}${day}_${hour}${minute}${suffix}`;
     }
 
     const generateCSVContent = () => {
+
+        // compute answer and score for overtime cases
+        const overTime = (timeStamps.current.t2 > -1);
+
+        let score = 0;
+        let index = 0;
+        const answerString = metaData.current.answer.reduce((acc, cur) => {
+            if (cur === SECTION[metaData.current.partLabel][index].answerKeyNum) {
+                score++;
+            }
+            index++;
+
+            if (cur >= 0 && cur <= 4) {
+                // map 0→A, 1→B, ... 4→E
+                return acc + String.fromCharCode(65 + cur);
+            } else {
+                return acc + '?';
+            }
+        }, "");
+
+        if (overTime) {
+            metaData.current.answerOverTime = answerString;
+            metaData.current.scoreOverTime = score;
+        }
+        else {
+            metaData.current.answerInTime = answerString;
+            metaData.current.scoreInTime = score;
+        }
+        delete metaData.current.answer;
+        
+        // Compute Total time
+        if (metaData.current.totalTime === 0) {
+            const d0 = timeStamps.current.t1 - timeStamps.current.t0;
+            const d1 = timeStamps.current.t3 - timeStamps.current.t2;
+            metaData.current.totalTime = (d0 + d1) / 1000;
+        }
+
         const csvContentArray = [
             Object.entries(metaData.current)
                 .map(([key, value]) => `# ${metaDataLabel[key]}: ${value}`)
                 .join('\n'),
-            '---',
+            '$$$',
             Object.keys(CSV_HEADER).join(','), 
             csvDataBuf.current.map(row => row.join(',')).join('\n')
         ];
@@ -89,6 +118,7 @@ function TestDataUploader() {
                 fileName: fileName.current, 
                 csvContent: csvContent.current,
                 emailAddress: metaData.current.email,
+                testTypeCode: (metaData.current.testType === 'PRE') ? 1 : 2,
             }),
         })
         .then(() => {
@@ -101,40 +131,6 @@ function TestDataUploader() {
         });
     };
     
-    // const verifyCSVUpload = () => {
-    //     const action = ACTION.completionVerification;
-    //     const encodedEmail = encodeURIComponent(metaData.current.email);
-
-    //     fetch(`${GAS_URL}?action=${action}&email=${encodedEmail}&fileName=${fileName.current}`)
-    //         .then(response => response.json())
-    //         .then(data => {
-    //             if (!data.success) {
-    //                 console.error('Verification failed: ', data.message);
-    //                 setStatus(UPLOAD_STATUS.error);
-    //                 return;
-    //             }
-    //             if (data.taskCompleted && data.fileExists) {
-    //                 console.log('Task completed and file successfully uploaded!');
-    //                 setStatus(UPLOAD_STATUS.success);
-    //                 return;
-    //             }
-    //             console.warn('Task marked as completed, but file not found.');
-    //             setStatus(UPLOAD_STATUS.error);
-    //         })
-    //         .catch(error => {
-    //             console.error('Error checking upload status: ', error);
-    //             setStatus(UPLOAD_STATUS.error);
-    //         });
-    // };
-
-    const upDateUserDoc = async () => {
-        await updateDoc(docRef.current, { 
-            csvFileName: fileName.current,
-            participationStage: 'completed',
-            'timeStamp.uploadCsv': serverTimestamp(),
-        });
-    };
-
     const verifyCSVUpload = () => {
         const action = ACTION.completionVerification;
         const encodedEmail = encodeURIComponent(metaData.current.email);
@@ -147,22 +143,13 @@ function TestDataUploader() {
                     setStatus(UPLOAD_STATUS.error);
                     return;
                 }
-                // if (data.taskCompleted && data.fileExists) {
-                //     console.log('Task completed and file successfully uploaded!');
-                //     setStatus(UPLOAD_STATUS.success);
-                //     return;
-                // }
-                // console.warn('Task marked as completed, but file not found.');
-                // setStatus(UPLOAD_STATUS.error);
-
+               
                 if (data.fileExists) {
-                    upDateUserDoc();
                     console.log('File uploaded successfully!');
                     setStatus(UPLOAD_STATUS.success);
                 } else {
                     setStatus(UPLOAD_STATUS.error);
                 }
-
             })
             .catch(error => {
                 console.error('Error checking upload status: ', error);
@@ -217,8 +204,6 @@ function TestDataUploader() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
-        upDateUserDoc();
     };
 
     // UI components

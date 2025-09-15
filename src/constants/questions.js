@@ -1307,6 +1307,11 @@ export const quiz = [
     PART_2.slice(0, 2),
 ];
 
+export const SECTION = {
+    A: PART_1,
+    B: PART_2,
+};
+
 export const EXAMPLE = { //-------------------------------------------- Q.1
         partLabel: -1,
         questionLabel: -1,

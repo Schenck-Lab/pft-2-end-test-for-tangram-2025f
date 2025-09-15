@@ -1,12 +1,20 @@
 import { useEffect, useRef } from 'react';
-import { MIN_DISPLACEMENT_THR, OBJ_LIST, formatTime } from '../constants/config';
+import { MIN_DISPLACEMENT_THR, formatTime } from '../constants/config';
 import { DisplacementChecker } from '../utils/DisplacementChecker';
 import { useTestContext } from './TestContext';
+
+
+const validClickList = [
+    'QF1', 'QF2', 'QF3', 'QF4', 'QF5',
+    'AO1', 'AO2', 'AO3', 'AO4', 'AO5',
+    'B1','B2','B3','B4','B5',
+    'B6','B7','B8','B9','B10',
+];
 
 function MouseEventRecorder() {
     const { 
         APP_STAGE, stageRef, csvDataBuf, mousePosRef, 
-        modalPop, partQuestionRef, objHoverOn,
+        backCheckingInstruction, objHoverOn, questionId,
     } = useTestContext();
 
     const currentHover = useRef('START');
@@ -16,16 +24,22 @@ function MouseEventRecorder() {
         const dispChecker = new DisplacementChecker(MIN_DISPLACEMENT_THR);
 
         const handleMouseMove = (e) => {
+            // Collect data only when participant is doing the test questions
+            const inMainTest = stageRef.current === APP_STAGE.test_main;
+            const inSuppTest = stageRef.current === APP_STAGE.test_supp;
+            const notReviewing = !backCheckingInstruction.current;
+            const isActive = (inMainTest || inSuppTest) && notReviewing;
+
             // Get mouse pos
             const x = e.clientX;
             const y = e.clientY;
             mousePosRef.current.x = x;
             mousePosRef.current.y = y;
 
-            // Collect data only when participant is doing the test questions
-            if (stageRef.current !== APP_STAGE.test) {
+            if (!isActive) {
                 return;
             }
+
             // Hover-on updates
             const hoverChanged = (currentHover.current !== objHoverOn.current);
             if (hoverChanged) {
@@ -33,46 +47,46 @@ function MouseEventRecorder() {
             }
             const hasMovedEnough = dispChecker.exceedsThreshold(x, y);
 
+            // 
+            
             // Prepare data record and write into buffer
             if (hoverChanged || hasMovedEnough) {
-                const record = [
-                    partQuestionRef.current.partId + 1,
-                    partQuestionRef.current.questionId + 1,
+                csvDataBuf.current.push([
+                    `Q${questionId.current + 1}`,
                     formatTime(),
-                    (csvDataBuf.current.at(-1)?.[3] + 1) || 0,
                     x,
                     y,
                     currentHover.current,
                     0,
-                    Number(modalPop.current),
-                ];
-                csvDataBuf.current.push(record);
+                ]);
             }
         };
 
         const handleClick = (e) => {
             // Collect data only when participant is doing the test questions
-            if (stageRef.current !== APP_STAGE.test) {
+            const inMainTest = stageRef.current === APP_STAGE.test_main;
+            const inSuppTest = stageRef.current === APP_STAGE.test_supp;
+            const notReviewing = !backCheckingInstruction.current;
+            const isActive = (inMainTest || inSuppTest) && notReviewing;
+            if (!isActive) {
                 return;
             }
+
             // This handler does not write data when 'Confirm' button is clicked.
-            if (currentHover.current === OBJ_LIST.CONF) {
+            if (!validClickList.includes(currentHover.current)) {
                 return;
             }
             const x = e.clientX;
             const y = e.clientY;
-            const record = [
-                partQuestionRef.current.partId + 1,
-                partQuestionRef.current.questionId + 1,
+            
+            csvDataBuf.current.push([
+                `Q${questionId.current + 1}`,
                 formatTime(),
-                (csvDataBuf.current.at(-1)?.[3] + 1) || 0,
                 x,
                 y,
                 currentHover.current,
                 1,
-                Number(modalPop.current),
-            ];
-            csvDataBuf.current.push(record);
+            ]);
         };
 
         window.addEventListener('mousemove', handleMouseMove);

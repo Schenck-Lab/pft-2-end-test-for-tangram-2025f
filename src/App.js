@@ -1,26 +1,23 @@
 import { useEffect } from 'react';
 import { THEME } from './constants/config.js';
 import { useTestContext } from './components/TestContext.js'
-import FirebaseEmailLogin from './components/FirebaseEmailLogin.js';
 import TestLogin from './components/TestLogin.js';
 import TestInstruction from './components/TestInstruction.js';
 import TestRunner from './components/TestRunner.js';
-import StrategySurvey from './components/StrategySurvey.js';
-import AboutYou from './components/AboutYou.js';
-import TestDataUploader from './components/TestDataUploader.js';
 import MouseEventRecorder from './components/MouseEventRecorder.js';
 import MouseTrace from './components/MouseTrace.js';
+import TestDataUploader from './components/TestDataUploader.js';
 
 // Parameters for debug/develop mode
 const enableModeSwitch = false;
 const enableMouseTrace = false;
 
 function App() {
-    const { APP_STAGE, stage, setThemeMode } = useTestContext();
+    const { APP_COMP, currComp, setThemeMode } = useTestContext();
    
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (!enableModeSwitch || stage === APP_STAGE.login) {
+            if (!enableModeSwitch || currComp === APP_COMP.login) {
                 return;
             }
             else if (e.key === '1') {
@@ -36,20 +33,18 @@ function App() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line
-    }, [stage]);
+    }, [currComp]);
 
     const currentComponent = {
-        [APP_STAGE.login]:       <FirebaseEmailLogin />,
-        [APP_STAGE.instruction]: <TestInstruction />,
-        [APP_STAGE.test]:        <TestRunner />,
-        [APP_STAGE.strategy]:    <StrategySurvey />,
-        [APP_STAGE.about]:       <AboutYou />,
-        [APP_STAGE.upload]:      <TestDataUploader />
+        [APP_COMP.login]:       <TestLogin />,
+        [APP_COMP.instruction]: <TestInstruction />,
+        [APP_COMP.test]:        <TestRunner />,
+        [APP_COMP.upload]:      <TestDataUploader />
     }
 
     return (
         <>
-            {currentComponent[stage]}
+            {currentComponent[currComp]}
             <MouseEventRecorder />
             {enableMouseTrace && <MouseTrace />}
         </>

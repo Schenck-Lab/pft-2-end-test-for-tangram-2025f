@@ -1,6 +1,7 @@
 
 // Google App Script | Web app URL
-const webAppKey = 'AKfycbwA2BGT4KJFMdo8P_IAISeofAWO98H8itScjojD9HdgJr5KBao8PwcMPltc7uvX2ajq';
+const webAppKey = 'AKfycbzTujQqJftXSFpt2658wrDc0y_Ek-2rWIiESroz-BOp9H4eMrfGI2OjIyxVK9lqU7RAmA';
+
 export const GAS_URL = `https://script.google.com/macros/s/${webAppKey}/exec`;
 export const ACTION = {
     loginVerification: 'loginVerification',
@@ -89,15 +90,17 @@ export function createFrozenMap(list) {
 }
 
 export const CSV_HEADER = createFrozenMap([
-    'PART_ID', 'QUESTION_ID', 'TIMESTAMP', 'STEP',
-    'MOUSE_X', 'MOUSE_Y', 'OBJ_HOVER_ON', 'CLICK',
-    'MODAL',
+    'PAGE_ID', 'TIMESTAMP', 'MOUSE_X', 'MOUSE_Y', 'OBJ_HOVER_ON', 'CLICK',
 ]);
 
 export const OBJ_LIST = createFrozenMap([
     'QF1', 'QF2', 'QF3', 'QF4', 'QF5',
     'AO1', 'AO2', 'AO3', 'AO4', 'AO5',
-    'CONF', 'HELP',
+    'START', 'RETURN', 'CONTINUE', 'HELP',
+    'B1','B2','B3','B4','B5',
+    'B6','B7','B8','B9','B10',
+    'SUBMIT_1', 'SUBMIT_2', 'SUBMIT_3', 
+    'none',
 ]);
 
 export function formatTime(date = new Date()) {
@@ -108,3 +111,11 @@ export function formatTime(date = new Date()) {
 
     return `${h}:${m}:${s}:${ms}`;
 }
+
+
+export const PAGE_ID = createFrozenMap([
+    'INSTRUCTION_START', 'INSTRUCTION_REVIEW',
+    'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 
+    'Q6', 'Q7', 'Q8', 'Q9', 'Q10',
+    'TIMEUP_3', 'TIMEUP_6',
+]);

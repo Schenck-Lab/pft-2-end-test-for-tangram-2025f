@@ -82,8 +82,12 @@ function AnswerOption({ holeList=[] }) {
 }
 
 function AnswerOptions({ frames, sid, setSid, locked=false }) {
-    const { APP_STAGE, stageRef, objHoverOn, objRef } = useTestContext();
+    const { APP_STAGE, stageRef, objHoverOn, objRef, qid, metaData, 
+        egSid, backCheckingInstruction } = useTestContext();
 
+
+    const inTest = [APP_STAGE.test_main, APP_STAGE.test_supp].includes(stageRef.current);
+    
     const getBoxShadow = (i) => {
         if (i !== sid) {
             return 'none';
@@ -95,16 +99,13 @@ function AnswerOptions({ frames, sid, setSid, locked=false }) {
     }
 
     const handleMouseEnter = (i) => {
-        if (stageRef.current !== APP_STAGE.test) {
-            return;
-        }
+        if (!inTest) return;
+        
         objHoverOn.current = `AO${i + 1}`;
     };
 
     const handleMouseLeave = (i) => {
-        if (stageRef.current !== APP_STAGE.test) {
-            return;
-        }
+        if (!inTest) return;
         objHoverOn.current = 'none';
     };
 
@@ -113,6 +114,17 @@ function AnswerOptions({ frames, sid, setSid, locked=false }) {
             return;
         }
         setSid(i);
+
+        //
+        if (stageRef.current === APP_STAGE.instruction) {
+            egSid.current = i;
+        } 
+        else if (backCheckingInstruction.current) {
+            
+        }
+        else {
+            metaData.current.answer[qid] = i;
+        }
     }
 
     return (

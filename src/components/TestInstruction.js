@@ -1,27 +1,39 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button, Divider } from 'antd';
 import { EXAMPLE, FOLDING_STEPS, UNFOLDING_STEPS } from '../constants/questions';
 import { useTestContext } from './TestContext';
 import QuestionFrames from './QuestionFrames';
 import AnswerOptions from './AnswerOptions';
-
+import { PAGE_ID, OBJ_LIST, formatTime } from '../constants/config';
 
 function TestInstruction() {
 
-    const { APP_STAGE, setStage, stageRef, partQuestionRef } = useTestContext();
-    const [sid, setSid] = useState(null);
-    const [confirmed, setConfirmed] = useState(false);
+    const { APP_STAGE, APP_COMP, setCurrComp, stageRef, 
+        egSid, backCheckingInstruction, csvDataBuf, mousePosRef,
+        setTimeupVisible, timeStamps,
+    } = useTestContext();
+
+    const [sid, setSid] = useState(egSid.current);
+    const [confirmed, setConfirmed] = useState(stageRef.current !== APP_STAGE.instruction);
     const secondPartRef = useRef(null);
 
-    const onConfirm = (sid) => {
-        console.log(`User selects '${'ABCDE'[sid]}'`);
+    const onConfirm = () => {
+        console.log(`User selects '${'ABCDE'[egSid.current]}' (eg question)`);
         setConfirmed(true);
 
         // Wait for the DOM to update, then scroll
         setTimeout(() => {
             secondPartRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100); // slight delay ensures the content is rendered
+        
     };
+
+    useEffect(() => {
+        if (sid !== null && stageRef.current === APP_STAGE.instruction) {
+            onConfirm();
+        }
+    // eslint-disable-next-line
+    }, [sid]);
 
     const title = (
         <div style={{ 
@@ -31,45 +43,73 @@ function TestInstruction() {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            marginTop: 30,
+            marginTop: 50,
+            marginBottom: 20,
             width: '80vw',
         }}>
-            Paper Folding Test (VZ-2)
+            Paper Folding Test
         </div>
     );
     
-    const confirmButton = (
-        <div style={{
-            marginTop: 30,
-            marginBottom: (confirmed) ? 20 : 70,
-        }}>
-            <Button
-                type='primary'
-                style={{ 
-                    width: 300, 
-                    height: 50, 
-                    fontSize: 20, 
-                    fontWeight: (sid === null || confirmed) ? 'normal' : 'bold',
-                }}
-                disabled={sid === null || confirmed}
-                onClick={() => onConfirm(sid)}
-            >
-                Confirm
-            </Button>
-        </div>
-    );
+    const THREE_MIN_IN_MILLISEC = 3 * 60 * 1000;
+
 
     const onStartButton = () => {
-        partQuestionRef.current.partId = 0;
-        partQuestionRef.current.questionId = 0;
-        stageRef.current = APP_STAGE.test;
-        setStage(APP_STAGE.test);
+
+        // Start the test
+        if (stageRef.current === APP_STAGE.instruction) {
+            stageRef.current = APP_STAGE.test_main;
+
+            timeStamps.current.t0 = Date.now();
+
+            // Write data [the very first piece]
+            csvDataBuf.current.push([
+                PAGE_ID.INSTRUCTION_START,
+                formatTime(),
+                mousePosRef.current.x,
+                mousePosRef.current.y,
+                OBJ_LIST.START,
+                1,
+            ]);
+
+            // Set timer to keep track of 3 mins
+            setTimeout(() => {
+                if (stageRef.current === APP_STAGE.test_main) {
+                    setCurrComp(APP_COMP.test);
+                    backCheckingInstruction.current = false;
+                    
+                    setTimeupVisible(true);
+                    stageRef.current = APP_STAGE.timeup_3;
+                }
+            }, THREE_MIN_IN_MILLISEC);
+        
+        // return to test
+        } else {
+
+            // Write data [return to test]
+            csvDataBuf.current.push([
+                PAGE_ID.INSTRUCTION_REVIEW,
+                formatTime(),
+                mousePosRef.current.x,
+                mousePosRef.current.y,
+                OBJ_LIST.RETURN,
+                1,
+            ]);
+        }
+
+        setCurrComp(APP_COMP.test);
+        backCheckingInstruction.current = false;
     }
+
+    const buttonLabel = (stageRef.current === APP_STAGE.instruction) ?
+        'Start the Test' : 'Return to Test';
+    
+    const verb = (stageRef.current === APP_STAGE.instruction) ? 'begin' : 'continue';
 
     const startTestButton = (
         <div style={{
             marginTop: 20,
-            marginBottom: 60,
+            marginBottom: 80,
         }}>
             <Button
                 type='primary'
@@ -81,7 +121,7 @@ function TestInstruction() {
                 }}
                 onClick={() => onStartButton()}
             >
-                Start the Test
+                {buttonLabel}
             </Button>
         </div>
     );
@@ -89,28 +129,32 @@ function TestInstruction() {
     const section1 = (
         <div style={{ width: '80vw', textAlign: 'start', fontSize: '20px'}}>
             <p>
-                In this test, you'll imagine how a piece of paper is folded 
-                and then unfolded after being punched with a hole. Each 
-                question presents a sequence of <b>diagrams</b> showing the 
-                folding process. The <b>dashed line</b> marks the original 
-                paper's boundary, the <b>solid line</b> shows the current 
-                fold, and the <b>final diagram</b> indicates where the hole 
-                is punched.
+                In this test you are to imagine the folding and unfolding of pieces of paper. In each
+            problem in the test there are some figures drawn at the top row and there are others
+            drawn at the bottom row. The figures at the top row represent a square piece of paper being folded,
+            and the last of these figures has one circles drawn on it to show where the paper
+            has been punched. Each hole is punched through all the thicknesses of paper at that point.
+            One of the five figures at the bottom row shows where the holes will be when the
+            paper is completely unfolded. You are to decide which one of these figures is correct and click that 
+            figure to select it.
             </p>
-            <QuestionFrames frames={EXAMPLE.questionFrames} />
-            <p>
-                Your task is to select the option below that correctly shows 
-                where the holes will appear after the paper is <b>completely 
-                unfolded</b>.<br/>
-                <b>Click on</b> the answer to select it. Then, click 
-                the <b>Confirm</b> button to move on.
-            </p>
-            <AnswerOptions 
-                frames={EXAMPLE.answerOptions} 
-                sid={sid} 
-                setSid={setSid} 
-                locked={confirmed}
-            />
+            
+            <Divider/>
+            <p>Now try the sample problem below.</p>
+            
+            <div style={{ textAlign: 'center', marginTop: 45, marginBottom: 25 }}>
+                <div style={{ display: 'inline-block' }}>
+                    <QuestionFrames frames={EXAMPLE.questionFrames} />
+                    <Divider />
+                    <AnswerOptions 
+                        frames={EXAMPLE.answerOptions} 
+                        sid={sid} 
+                        setSid={setSid} 
+                        locked={backCheckingInstruction.current}
+                    />
+                </div>
+            </div>
+
         </div>
     );
 
@@ -129,38 +173,39 @@ function TestInstruction() {
             >
                 <p>
                     The correct answer to the sample problem above is <b>C</b>.
-                    The figures below show how the paper 
-                    is <b>folded</b> and <b>punched</b>.
+                    The figures below show how the paper was folded and why <b>C</b> is the correct answer.
                 </p>
                 <QuestionFrames frames={FOLDING_STEPS} padding={24} />
                 <p>
-                    Fully <b>unfolding</b> the punched paper reveals two 
+                    Fully unfolding the punched paper reveals two 
                     holes on the left side, as shown below.
                 </p>
                 <QuestionFrames frames={UNFOLDING_STEPS} padding={24} />
-                <div style={{
-                    padding: '12px', 
-                    backgroundColor: 'rgb(236, 230, 230)',
-                    borderRadius: '12px',
-                }}>
-                    Your score on this test will be the number marked correctly minus a fraction of the number
-                    marked incorrectly. Therefore, it will not be to your advantage to guess unless you are able to
-                    eliminate one or more of the answer choices as wrong.
-                </div>
+
+                <Divider />
                 <p>
-                    If you are ready, please click the <b>Start 
-                    the Test</b> button to begin.
+                    In these problems all of the folds that are made are shown in the figures at the top row, 
+                and the paper is not turned or moved in any way except to make the folds shown in the
+                figures. Remember, the correct answer is the figure that shows the positions of the holes when
+                the paper is completely unfolded.
                 </p>
+
+                <p>
+                    Your score on this test will be the number marked correctly minus a fraction of the number
+                marked incorrectly. Therefore, it will <u>not</u> be to your advantage to guess unless you are able to
+                eliminate one or more of the answer choices as wrong.
+                </p>
+
+                <p>You will have <u>3 minutes</u> for this test.</p>
+                <p>If you are ready, please click the <b>{buttonLabel}</b> button to {verb}.</p>
             </div>
         </div>
     );
 
-    
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             {title}
             {section1}
-            {confirmButton}
             {confirmed && section2}
             {confirmed && startTestButton}
         </div>
