@@ -2,7 +2,7 @@
   "name": "paper-folding-tester",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://schenck-lab.github.io/paper-folding-test",
+  "homepage": "https://schenck-lab.github.io/pft-2-end-test-for-tangram-2025f",
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -22,8 +22,7 @@
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
-    "deploy:personal": "gh-pages -d build -r https://github.com/orc-dev/paper-folding-tester.git",
-    "deploy:lab": "gh-pages -d build -r https://github.com/Schenck-Lab/paper-folding-test.git"
+    "deploy:lab": "gh-pages -d build -r https://github.com/Schenck-Lab/pft-2-end-test-for-tangram-2025f"
   },
   "eslintConfig": {
     "extends": [
