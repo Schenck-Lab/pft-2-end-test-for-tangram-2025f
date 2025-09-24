@@ -16,14 +16,17 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
-    "deploy:lab": "gh-pages -d build -r https://github.com/Schenck-Lab/pft-2-end-test-for-tangram-2025f"
-  },
+  "start": "react-scripts start",
+  "build": "react-scripts build",
+  "test": "react-scripts test",
+  "eject": "react-scripts eject",
+
+  "predeploy": "npm run build",
+  "deploy": "gh-pages -d build -b gh-pages -r https://github.com/Schenck-Lab/pft-2-end-test-for-tangram-2025f.git",
+  "deploy:lab": "gh-pages -d build -b gh-pages -r https://github.com/Schenck-Lab/pft-2-end-test-for-tangram-2025f.git",
+
+  "postbuild": "cp build/index.html build/404.html || (powershell -Command \"Copy-Item build/index.html build/404.html\")"
+    },
   "eslintConfig": {
     "extends": [
       "react-app",
